@@ -4,7 +4,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 
 export async function GET(request: NextRequest) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL!
+  const { origin: APP_URL } = new URL(request.url)
   const { searchParams } = new URL(request.url)
   const orgId = searchParams.get('org_id')
   const orgSlug = searchParams.get('org_slug')

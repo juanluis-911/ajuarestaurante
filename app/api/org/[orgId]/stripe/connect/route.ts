@@ -17,7 +17,8 @@ export async function POST(
     }
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL!
+    const { origin } = new URL(request.url)
+    const APP_URL = origin
     const supabase = await createClient()
 
     // Get org slug for return URL

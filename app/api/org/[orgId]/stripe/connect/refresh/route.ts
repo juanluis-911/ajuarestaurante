@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ orgId: string }> }
 ) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL!
+  const { origin: APP_URL } = new URL(_request.url)
   const { orgId } = await params
   const supabase = createServiceClient()
 
