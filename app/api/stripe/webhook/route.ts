@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createServiceClient } from '@/lib/supabase/service'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-const WEBHOOK_SECRET = process.env.STRIPE_CONNECT_WEBHOOK_SECRET!
-
 export async function POST(request: NextRequest) {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+  const WEBHOOK_SECRET = process.env.STRIPE_CONNECT_WEBHOOK_SECRET!
   const signature = request.headers.get('stripe-signature')
   const rawBody = await request.text()
 

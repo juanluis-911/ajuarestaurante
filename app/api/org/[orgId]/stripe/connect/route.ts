@@ -4,9 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getUserContext, canManageOrg } from '@/lib/auth/get-user-context'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL!
-
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ orgId: string }> }
@@ -19,6 +16,8 @@ export async function POST(
       return NextResponse.json({ error: 'Sin autorización' }, { status: 403 })
     }
 
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+    const APP_URL = process.env.NEXT_PUBLIC_APP_URL!
     const supabase = await createClient()
 
     // Get org slug for return URL

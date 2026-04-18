@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createServiceClient } from '@/lib/supabase/service'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL!
-
 export async function GET(request: NextRequest) {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL!
   const { searchParams } = new URL(request.url)
   const orgId = searchParams.get('org_id')
   const orgSlug = searchParams.get('org_slug')

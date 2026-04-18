@@ -2,14 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createServiceClient } from '@/lib/supabase/service'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL!
-
 // Stripe redirects here when the account link expires — we generate a new one
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ orgId: string }> }
 ) {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL!
   const { orgId } = await params
   const supabase = createServiceClient()
 
