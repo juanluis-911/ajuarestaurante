@@ -39,7 +39,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const isGuestOnly    = GUEST_ONLY_PATHS.some(p => pathname.startsWith(p))
   const isAlwaysPublic = ALWAYS_PUBLIC_PATHS.some(p => pathname.startsWith(p))
-  const isPublicStorefront = pathname.startsWith('/menu/')
+  const isPublicStorefront = pathname.startsWith('/menu/') || pathname === '/'
 
   // Sin sesión → solo puede ver rutas públicas
   if (!user && !isGuestOnly && !isAlwaysPublic && !isPublicStorefront) {
