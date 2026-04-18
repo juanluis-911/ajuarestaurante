@@ -81,7 +81,15 @@ export default async function SuperAdminDashboard() {
                   <h2 className="font-semibold text-gray-900">{org.name}</h2>
                   <p className="text-xs text-gray-400 font-mono mt-0.5">{org.slug}</p>
                 </div>
-                <span className="text-xs text-gray-500">{restaurants.length} sucursal{restaurants.length !== 1 ? 'es' : ''}</span>
+                <div className="flex items-center gap-3">
+                  <Link
+                    href={`/org/${org.slug}/settings`}
+                    className="text-xs text-gray-500 hover:text-orange-600 font-medium transition-colors"
+                  >
+                    Configuración
+                  </Link>
+                  <span className="text-xs text-gray-400">{restaurants.length} sucursal{restaurants.length !== 1 ? 'es' : ''}</span>
+                </div>
               </div>
 
               {restaurants.length === 0 ? (
