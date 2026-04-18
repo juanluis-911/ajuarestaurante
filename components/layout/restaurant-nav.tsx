@@ -1,32 +1,34 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 interface RestaurantNavProps {
   orgSlug: string
   restaurantSlug: string
-  currentPath: string
   role: string
 }
 
-const baseLinks = [
-  { href: 'pos', label: 'POS', roles: ['gerente', 'org_admin', 'cajera'] },
-  { href: 'kitchen', label: 'Cocina', roles: ['gerente', 'org_admin', 'cajera', 'cocina'] },
-  { href: 'menu', label: 'Menú', roles: ['gerente', 'org_admin'] },
-  { href: 'tables', label: 'Mesas', roles: ['gerente', 'org_admin'] },
-  { href: 'reports', label: 'Reportes', roles: ['gerente', 'org_admin'] },
+const allLinks = [
+  { href: 'pos',     label: 'POS',      roles: ['super_admin', 'gerente', 'org_admin', 'cajera'] },
+  { href: 'kitchen', label: 'Cocina',   roles: ['super_admin', 'gerente', 'org_admin', 'cajera', 'cocina'] },
+  { href: 'menu',    label: 'Menú',     roles: ['super_admin', 'gerente', 'org_admin'] },
+  { href: 'tables',  label: 'Mesas',    roles: ['super_admin', 'gerente', 'org_admin'] },
+  { href: 'reports',   label: 'Reportes',      roles: ['super_admin', 'gerente', 'org_admin'] },
+  { href: 'settings',  label: 'Configuración', roles: ['super_admin', 'gerente', 'org_admin'] },
 ]
 
-export function RestaurantNav({ orgSlug, restaurantSlug, currentPath, role }: RestaurantNavProps) {
+export function RestaurantNav({ orgSlug, restaurantSlug, role }: RestaurantNavProps) {
+  const pathname = usePathname()
   const base = `/r/${orgSlug}/${restaurantSlug}`
-  const links = baseLinks.filter(l => l.roles.includes(role))
+  const links = allLinks.filter(l => l.roles.includes(role))
 
   return (
-    <nav className="bg-white border-b border-gray-200">
-      <div className="flex overflow-x-auto">
+    <nav className="bg-white border-b border-gray-200 px-4">
+      <div className="flex overflow-x-auto gap-1">
         {links.map(link => {
           const href = `${base}/${link.href}`
-          const isActive = currentPath === href || currentPath.startsWith(`${href}/`)
+          const isActive = pathname === href || pathname.startsWith(`${href}/`)
           return (
             <Link
               key={link.href}

@@ -127,3 +127,36 @@ export interface UserWithRoles extends UserProfile {
   org_roles: UserOrganizationRole[]
   restaurant_roles: UserRestaurantRole[]
 }
+
+export interface OrganizationSettings {
+  id: string
+  org_id: string
+  stripe_publishable_key: string | null
+  stripe_secret_key: string | null
+  stripe_webhook_secret: string | null
+  stripe_enabled: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface RestaurantSettings {
+  id: string
+  restaurant_id: string
+  ticket_header: string | null
+  ticket_footer: string | null
+  ticket_show_logo: boolean
+  ticket_show_address: boolean
+  ticket_show_phone: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface WebhookEndpoint {
+  id: string
+  restaurant_id: string
+  url: string
+  events: string[]
+  is_active: boolean
+  secret: string
+  created_at: string
+}
