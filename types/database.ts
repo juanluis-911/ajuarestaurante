@@ -88,6 +88,8 @@ export interface RestaurantTable {
   created_at: string
 }
 
+export type PaymentStatus = 'pending' | 'paid' | 'failed'
+
 export interface Order {
   id: string
   restaurant_id: string
@@ -99,6 +101,8 @@ export interface Order {
   customer_phone: string | null
   notes: string | null
   total: number
+  payment_intent_id: string | null
+  payment_status: PaymentStatus | null
   created_by: string | null
   created_at: string
   updated_at: string
@@ -139,6 +143,13 @@ export interface OrganizationSettings {
   updated_at: string
 }
 
+export interface BusinessHour {
+  day: string
+  enabled: boolean
+  open: string
+  close: string
+}
+
 export interface RestaurantSettings {
   id: string
   restaurant_id: string
@@ -147,7 +158,22 @@ export interface RestaurantSettings {
   ticket_show_logo: boolean
   ticket_show_address: boolean
   ticket_show_phone: boolean
+  business_hours: BusinessHour[] | null
+  accepts_cash: boolean
+  accepts_card: boolean
+  stripe_account_id: string | null
   created_at: string
+  updated_at: string
+}
+
+export interface UserResourcePermission {
+  id: string
+  user_id: string
+  restaurant_id: string
+  resource: string
+  can_view: boolean
+  can_edit: boolean
+  can_delete: boolean
   updated_at: string
 }
 

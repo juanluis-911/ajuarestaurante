@@ -14,11 +14,14 @@ export default async function RestaurantSettingsPage({ params }: Props) {
 
   const supabase = await createClient()
 
+  const { data: org } = await supabase.from('organizations').select('id').eq('slug', orgSlug).single()
+  if (!org) notFound()
+
   const { data: restaurant } = await supabase
     .from('restaurants')
-    .select('id, name, slug, address, phone, logo_url, org_id, organizations!inner(slug)')
+    .select('id, name, slug, address, phone, logo_url, org_id')
     .eq('slug', restaurantSlug)
-    .eq('organizations.slug', orgSlug)
+    .eq('org_id', org.id)
     .single()
 
   if (!restaurant) notFound()
@@ -59,6 +62,10 @@ export default async function RestaurantSettingsPage({ params }: Props) {
     ticket_show_logo: true,
     ticket_show_address: true,
     ticket_show_phone: true,
+    business_hours: null,
+    accepts_cash: true,
+    accepts_card: true,
+    stripe_account_id: null,
     created_at: '',
     updated_at: '',
   }

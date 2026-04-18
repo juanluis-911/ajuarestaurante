@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Loader2, Eye, EyeOff } from 'lucide-react'
+import Link from 'next/link'
+import { Loader2, Eye, EyeOff, Star } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -35,16 +36,28 @@ export default function LoginPage() {
     <div className="min-h-screen flex">
       {/* Panel izquierdo — brand */}
       <div className="hidden lg:flex lg:w-1/2 bg-orange-500 flex-col items-center justify-center p-12 relative overflow-hidden">
+        {/* Círculos decorativos fondo */}
         <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-orange-600/40" />
         <div className="absolute -bottom-32 -right-32 w-[500px] h-[500px] rounded-full bg-orange-600/30" />
+        {/* Sello circular externo */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-80 h-80 rounded-full border-4 border-white/15 border-dashed" />
+        </div>
 
         <div className="relative z-10 text-center">
-          <div className="w-24 h-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mx-auto mb-6 shadow-2xl border border-white/30">
-            <span className="font-heading font-bold text-white text-4xl">A</span>
+          {/* Logo sello */}
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <Star className="h-5 w-5 fill-brand-green-500 text-brand-green-500" />
+            <div className="w-28 h-28 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-2xl border-2 border-white/40">
+              <span className="text-5xl select-none">🍔</span>
+            </div>
+            <Star className="h-5 w-5 fill-brand-green-500 text-brand-green-500" />
           </div>
-          <h1 className="font-heading text-5xl font-bold text-white mb-2 tracking-tight">Ajúa</h1>
-          <p className="text-orange-100 text-lg font-medium mb-2">Deliciosamente</p>
-          <div className="w-12 h-0.5 bg-white/40 mx-auto mb-6" />
+
+          <h1 className="font-heading text-5xl font-bold text-white mb-1 tracking-tight">Ajúa</h1>
+          <p className="text-orange-100 text-base italic font-medium mb-1">Deliciosamente</p>
+          <p className="text-orange-200/70 text-xs tracking-widest uppercase mb-6">Desde 2013</p>
+          <div className="w-16 h-0.5 bg-white/30 mx-auto mb-5" />
           <p className="text-orange-100/80 text-sm max-w-xs leading-relaxed">
             Sistema de gestión integral para tu restaurante
           </p>
@@ -83,9 +96,15 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Contraseña
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-semibold text-gray-700">Contraseña</label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-orange-600 hover:text-orange-700 font-medium transition-colors"
+                >
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}

@@ -1,6 +1,6 @@
 import { getUserContext } from '@/lib/auth/get-user-context'
 import { createClient } from '@/lib/supabase/server'
-import { Building2, Users, ShoppingBag, MapPin, Phone, ChevronRight } from 'lucide-react'
+import { Building2, Users, ShoppingBag, MapPin, Phone, ChevronRight, Shield } from 'lucide-react'
 import { CreateRestaurantModal } from '@/components/admin/create-restaurant-modal'
 import Link from 'next/link'
 
@@ -39,7 +39,16 @@ export default async function SuperAdminDashboard() {
           <h1 className="text-2xl font-bold text-gray-900">Panel Super Admin</h1>
           <p className="text-sm text-gray-500 mt-1">Vista global del sistema</p>
         </div>
-        <CreateRestaurantModal organizations={orgsForModal} />
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/users"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:border-orange-300 hover:text-orange-600 transition-colors"
+          >
+            <Shield className="h-4 w-4" />
+            Gestionar usuarios
+          </Link>
+          <CreateRestaurantModal organizations={orgsForModal} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

@@ -148,6 +148,8 @@ create table orders (
   customer_phone text,
   notes text,
   total numeric(10,2) not null default 0,
+  payment_intent_id text,
+  payment_status text check (payment_status in ('pending', 'paid', 'failed')),
   created_by uuid references user_profiles(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

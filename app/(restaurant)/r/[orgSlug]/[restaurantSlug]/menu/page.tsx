@@ -12,11 +12,14 @@ export default async function MenuPage({
   const { orgSlug, restaurantSlug } = await params
   const [ctx, supabase] = await Promise.all([getUserContext(), createClient()])
 
+  const { data: org } = await supabase.from('organizations').select('id').eq('slug', orgSlug).single()
+  if (!org) notFound()
+
   const { data: restaurant } = await supabase
     .from('restaurants')
-    .select('id, name, slug, org_id, organizations!inner(slug)')
+    .select('id, name, slug, org_id')
     .eq('slug', restaurantSlug)
-    .eq('organizations.slug', orgSlug)
+    .eq('org_id', org.id)
     .single()
 
   if (!restaurant) notFound()

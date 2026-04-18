@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getUserContext } from '@/lib/auth/get-user-context'
 import { AppHeader } from '@/components/layout/app-header'
+import { AdminNav } from '@/components/layout/admin-nav'
 
 export default async function SuperAdminLayout({
   children,
@@ -12,9 +13,10 @@ export default async function SuperAdminLayout({
   if (!ctx.isSuperAdmin) redirect('/login')
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader userName={ctx.full_name} />
-      <main className="p-6">{children}</main>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <AppHeader userName={ctx.full_name} dashboardHref="/admin/dashboard" />
+      <AdminNav />
+      <main className="flex-1 p-4 md:p-6">{children}</main>
     </div>
   )
 }

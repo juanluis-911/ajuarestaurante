@@ -32,7 +32,7 @@
 
   /* Typography */
   --font-sans:    var(--font-nunito);
-  --font-heading: var(--font-playfair);
+  --font-heading: var(--font-oswald);
   --font-mono:    var(--font-geist-mono);
 
   /* Shadcn tokens */

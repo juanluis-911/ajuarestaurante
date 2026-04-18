@@ -13,10 +13,14 @@ import {
   Copy,
   Check,
   X,
+  Clock,
+  CreditCard,
+  AlertCircle,
+  RotateCcw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import type { RestaurantSettings, WebhookEndpoint } from '@/types/database'
+import type { RestaurantSettings, WebhookEndpoint, BusinessHour } from '@/types/database'
 
 interface TeamMember {
   id: string
@@ -40,7 +44,17 @@ interface Props {
   webhooks: WebhookEndpoint[]
 }
 
-type Tab = 'general' | 'equipo' | 'ticket' | 'webhooks'
+type Tab = 'general' | 'equipo' | 'ticket' | 'webhooks' | 'horarios' | 'pagos'
+
+const DEFAULT_BUSINESS_HOURS: BusinessHour[] = [
+  { day: 'Domingo',    enabled: true, open: '08:00', close: '22:00' },
+  { day: 'Lunes',      enabled: true, open: '09:00', close: '22:00' },
+  { day: 'Martes',     enabled: true, open: '09:00', close: '22:00' },
+  { day: 'Miércoles',  enabled: true, open: '09:00', close: '22:00' },
+  { day: 'Jueves',     enabled: true, open: '09:00', close: '22:00' },
+  { day: 'Viernes',    enabled: true, open: '09:00', close: '22:00' },
+  { day: 'Sábado',     enabled: true, open: '09:00', close: '22:00' },
+]
 
 const WEBHOOK_EVENTS = [
   'order.created',
@@ -366,20 +380,7 @@ function TicketTab({
           ].map(({ label, value, set }) => (
             <label key={label} className="flex items-center justify-between cursor-pointer">
               <span className="text-sm text-gray-700">{label}</span>
-              <button
-                role="switch"
-                aria-checked={value}
-                onClick={() => set(v => !v)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  value ? 'bg-orange-500' : 'bg-gray-200'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    value ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
+              <Toggle value={value} onChange={set} />
             </label>
           ))}
         </div>
@@ -466,6 +467,290 @@ function TicketTab({
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── Tab: Horarios ────────────────────────────────────────────────────────────
+
+function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={value}
+      onClick={() => onChange(!value)}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
+        value ? 'bg-orange-500' : 'bg-gray-200'
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+          value ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </button>
+  )
+}
+
+function HorariosTab({
+  restaurantId,
+  initialHours,
+}: {
+  restaurantId: string
+  initialHours: BusinessHour[] | null
+}) {
+  const [hours, setHours] = useState<BusinessHour[]>(
+    initialHours ?? DEFAULT_BUSINESS_HOURS
+  )
+  const [saving, setSaving] = useState(false)
+
+  function update(index: number, patch: Partial<BusinessHour>) {
+    setHours(prev => prev.map((h, i) => (i === index ? { ...h, ...patch } : h)))
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/restaurants/${restaurantId}/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ business_hours: hours }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        toast.error(data.error ?? 'Error al guardar')
+      } else {
+        toast.success('Horarios guardados')
+      }
+    } catch {
+      toast.error('Error de conexión')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="max-w-lg space-y-5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gray-700">Horarios de atención</h3>
+        <button
+          onClick={() => setHours(DEFAULT_BUSINESS_HOURS)}
+          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Restaurar predeterminados
+        </button>
+      </div>
+
+      <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+        {hours.map((h, i) => (
+          <div key={h.day} className="flex items-center gap-3 px-4 py-3 bg-white">
+            <Toggle value={h.enabled} onChange={v => update(i, { enabled: v })} />
+            <span className={`w-24 text-sm font-medium shrink-0 ${h.enabled ? 'text-gray-900' : 'text-gray-400'}`}>
+              {h.day}
+            </span>
+            <div className={`flex items-center gap-2 flex-1 transition-opacity ${h.enabled ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
+              <input
+                type="time"
+                value={h.open}
+                onChange={e => update(i, { open: e.target.value })}
+                className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              />
+              <span className="text-sm text-gray-400">a</span>
+              <input
+                type="time"
+                value={h.close}
+                onChange={e => update(i, { close: e.target.value })}
+                className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
+      >
+        {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+        Guardar horarios
+      </button>
+    </div>
+  )
+}
+
+// ─── Tab: Pagos ───────────────────────────────────────────────────────────────
+
+function PagosTab({
+  restaurantId,
+  initialAcceptsCash,
+  initialAcceptsCard,
+  initialStripeAccountId,
+}: {
+  restaurantId: string
+  initialAcceptsCash: boolean
+  initialAcceptsCard: boolean
+  initialStripeAccountId: string | null
+}) {
+  const [acceptsCash, setAcceptsCash] = useState(initialAcceptsCash)
+  const [acceptsCard, setAcceptsCard] = useState(initialAcceptsCard)
+  const [stripeAccountId, setStripeAccountId] = useState(initialStripeAccountId ?? '')
+  const [showStripeInput, setShowStripeInput] = useState(false)
+  const [savingMethods, setSavingMethods] = useState(false)
+  const [savingStripe, setSavingStripe] = useState(false)
+
+  const isStripeConnected = Boolean(initialStripeAccountId)
+
+  async function handleSaveMethods() {
+    setSavingMethods(true)
+    try {
+      const res = await fetch(`/api/restaurants/${restaurantId}/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accepts_cash: acceptsCash, accepts_card: acceptsCard }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        toast.error(data.error ?? 'Error al guardar')
+      } else {
+        toast.success('Métodos de pago actualizados')
+      }
+    } catch {
+      toast.error('Error de conexión')
+    } finally {
+      setSavingMethods(false)
+    }
+  }
+
+  async function handleSaveStripe() {
+    if (!stripeAccountId.trim()) {
+      toast.error('Ingresa un ID de cuenta Stripe')
+      return
+    }
+    setSavingStripe(true)
+    try {
+      const res = await fetch(`/api/restaurants/${restaurantId}/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stripe_account_id: stripeAccountId.trim() }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        toast.error(data.error ?? 'Error al guardar')
+      } else {
+        toast.success('Cuenta Stripe guardada')
+        setShowStripeInput(false)
+      }
+    } catch {
+      toast.error('Error de conexión')
+    } finally {
+      setSavingStripe(false)
+    }
+  }
+
+  return (
+    <div className="max-w-lg space-y-6">
+      {/* Stripe section */}
+      <div className="border border-gray-200 rounded-xl p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <CreditCard className="h-5 w-5 text-gray-600" />
+          <h3 className="text-sm font-semibold text-gray-900">Pagos con Stripe</h3>
+        </div>
+        <p className="text-sm text-gray-500">
+          Conecta tu cuenta Stripe para recibir pagos de tus clientes directamente.
+        </p>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          {isStripeConnected ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700 border border-green-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              Conectado
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
+              <AlertCircle className="h-3.5 w-3.5" />
+              No conectado
+            </span>
+          )}
+          {initialStripeAccountId && (
+            <span className="text-sm text-gray-500 font-mono">{initialStripeAccountId}</span>
+          )}
+        </div>
+
+        {showStripeInput ? (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                ID de cuenta Stripe (acct_...)
+              </label>
+              <input
+                type="text"
+                value={stripeAccountId}
+                onChange={e => setStripeAccountId(e.target.value)}
+                placeholder="acct_1TKTswCNAB1puyN4"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-mono"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleSaveStripe}
+                disabled={savingStripe}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                {savingStripe && <Loader2 className="h-4 w-4 animate-spin" />}
+                Guardar
+              </button>
+              <button
+                onClick={() => { setShowStripeInput(false); setStripeAccountId(initialStripeAccountId ?? '') }}
+                className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowStripeInput(true)}
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors"
+          >
+            <CreditCard className="h-4 w-4" />
+            {isStripeConnected ? 'Cambiar cuenta Stripe' : 'Conectar cuenta Stripe'}
+          </button>
+        )}
+      </div>
+
+      {/* Payment methods */}
+      <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-900">Métodos de pago aceptados</h3>
+        </div>
+        <div className="divide-y divide-gray-100">
+          <div className="flex items-center justify-between px-5 py-4">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Pagar al recibir (efectivo)</p>
+              <p className="text-xs text-gray-500 mt-0.5">El cliente paga en efectivo al momento de recibir su pedido</p>
+            </div>
+            <Toggle value={acceptsCash} onChange={setAcceptsCash} />
+          </div>
+          <div className="flex items-center justify-between px-5 py-4">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Pagar con tarjeta (Stripe)</p>
+              <p className="text-xs text-gray-500 mt-0.5">Requiere cuenta Stripe conectada</p>
+            </div>
+            <Toggle value={acceptsCard} onChange={setAcceptsCard} />
+          </div>
+        </div>
+      </div>
+
+      <button
+        onClick={handleSaveMethods}
+        disabled={savingMethods}
+        className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
+      >
+        {savingMethods && <Loader2 className="h-4 w-4 animate-spin" />}
+        Guardar métodos de pago
+      </button>
     </div>
   )
 }
@@ -754,10 +1039,12 @@ export function RestaurantSettingsClient({
   const [activeTab, setActiveTab] = useState<Tab>('general')
 
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
-    { id: 'general',   label: 'General',            icon: Settings  },
-    { id: 'equipo',    label: 'Equipo',              icon: Users     },
-    { id: 'ticket',    label: 'Impresión de Ticket', icon: Printer   },
-    { id: 'webhooks',  label: 'Webhooks',            icon: Webhook   },
+    { id: 'general',   label: 'General',            icon: Settings    },
+    { id: 'equipo',    label: 'Equipo',              icon: Users       },
+    { id: 'horarios',  label: 'Horarios',            icon: Clock       },
+    { id: 'pagos',     label: 'Pagos',               icon: CreditCard  },
+    { id: 'ticket',    label: 'Impresión de Ticket', icon: Printer     },
+    { id: 'webhooks',  label: 'Webhooks',            icon: Webhook     },
   ]
 
   return (
@@ -801,6 +1088,20 @@ export function RestaurantSettingsClient({
             restaurantAddress={restaurant.address}
             restaurantPhone={restaurant.phone}
             initialSettings={settings}
+          />
+        )}
+        {activeTab === 'horarios' && (
+          <HorariosTab
+            restaurantId={restaurant.id}
+            initialHours={settings.business_hours}
+          />
+        )}
+        {activeTab === 'pagos' && (
+          <PagosTab
+            restaurantId={restaurant.id}
+            initialAcceptsCash={settings.accepts_cash}
+            initialAcceptsCard={settings.accepts_card}
+            initialStripeAccountId={settings.stripe_account_id}
           />
         )}
         {activeTab === 'webhooks' && (

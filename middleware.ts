@@ -1,10 +1,15 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_PATHS = [
-  '/login',
-  '/register',
+// Rutas que solo se muestran a usuarios NO autenticados (login, registro)
+const GUEST_ONLY_PATHS = ['/login', '/register']
+
+// Rutas accesibles siempre (con o sin sesión)
+const ALWAYS_PUBLIC_PATHS = [
   '/auth/callback',
+  '/callback',
+  '/forgot-password',
+  '/set-password',
 ]
 
 export async function middleware(request: NextRequest) {
@@ -32,16 +37,19 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
-  const isPublicPath = PUBLIC_PATHS.some(p => pathname.startsWith(p))
+  const isGuestOnly    = GUEST_ONLY_PATHS.some(p => pathname.startsWith(p))
+  const isAlwaysPublic = ALWAYS_PUBLIC_PATHS.some(p => pathname.startsWith(p))
   const isPublicStorefront = pathname.startsWith('/menu/')
 
-  if (!user && !isPublicPath && !isPublicStorefront) {
+  // Sin sesión → solo puede ver rutas públicas
+  if (!user && !isGuestOnly && !isAlwaysPublic && !isPublicStorefront) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  if (user && isPublicPath) {
+  // Con sesión → no puede ver login/registro, pero SÍ puede ver set-password y forgot-password
+  if (user && isGuestOnly) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)

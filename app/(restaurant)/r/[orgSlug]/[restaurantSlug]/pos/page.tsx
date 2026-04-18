@@ -24,11 +24,14 @@ export default async function POSPage({
 
   if (!hasRole) notFound()
 
+  const { data: org } = await supabase.from('organizations').select('id').eq('slug', orgSlug).single()
+  if (!org) notFound()
+
   const { data: restaurant } = await supabase
     .from('restaurants')
-    .select('id, name, organizations!inner(slug)')
+    .select('id, name')
     .eq('slug', restaurantSlug)
-    .eq('organizations.slug', orgSlug)
+    .eq('org_id', org.id)
     .single()
 
   if (!restaurant) notFound()

@@ -1,15 +1,16 @@
 import { redirect } from 'next/navigation'
 import { getUserContext, canAccessOrgBySlug } from '@/lib/auth/get-user-context'
 import { createClient } from '@/lib/supabase/server'
-import { OrgStripeSettings } from '@/components/org/org-stripe-settings'
-import type { OrganizationSettings } from '@/types/database'
+import { OrgStripeConnect } from '@/components/org/org-stripe-connect'
 
 interface Props {
   params: Promise<{ orgSlug: string }>
+  searchParams: Promise<{ stripe?: string }>
 }
 
-export default async function OrgSettingsPage({ params }: Props) {
+export default async function OrgSettingsPage({ params, searchParams }: Props) {
   const { orgSlug } = await params
+  const { stripe } = await searchParams
   const ctx = await getUserContext()
 
   if (!canAccessOrgBySlug(ctx, orgSlug)) redirect('/login')
@@ -26,7 +27,7 @@ export default async function OrgSettingsPage({ params }: Props) {
 
   const { data: orgSettings } = await supabase
     .from('organization_settings')
-    .select('*')
+    .select('stripe_account_id, stripe_onboarding_complete, stripe_enabled')
     .eq('org_id', organization.id)
     .maybeSingle()
 
@@ -37,9 +38,27 @@ export default async function OrgSettingsPage({ params }: Props) {
         <p className="text-sm text-gray-500 mt-1">{organization.name}</p>
       </div>
 
-      <OrgStripeSettings
+      {stripe === 'connected' && (
+        <div className="bg-green-50 border border-green-200 rounded-xl px-5 py-4 text-sm text-green-800 font-medium">
+          ✓ Cuenta de Stripe conectada correctamente. Tus restaurantes ya pueden recibir pagos.
+        </div>
+      )}
+      {stripe === 'incomplete' && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-5 py-4 text-sm text-yellow-800">
+          Falta completar la configuración en Stripe. Haz clic en "Continuar configuración" cuando estés listo.
+        </div>
+      )}
+      {stripe === 'error' && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 text-sm text-red-800">
+          Ocurrió un error al conectar con Stripe. Inténtalo de nuevo.
+        </div>
+      )}
+
+      <OrgStripeConnect
         orgId={organization.id}
-        settings={orgSettings as OrganizationSettings | null}
+        accountId={orgSettings?.stripe_account_id ?? null}
+        onboardingComplete={orgSettings?.stripe_onboarding_complete ?? false}
+        stripeEnabled={orgSettings?.stripe_enabled ?? false}
       />
     </div>
   )

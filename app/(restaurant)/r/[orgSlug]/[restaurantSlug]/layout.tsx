@@ -14,11 +14,19 @@ export default async function RestaurantLayout({
   const { orgSlug, restaurantSlug } = await params
   const [ctx, supabase] = await Promise.all([getUserContext(), createClient()])
 
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('id')
+    .eq('slug', orgSlug)
+    .single()
+
+  if (!org) notFound()
+
   const { data: restaurant } = await supabase
     .from('restaurants')
-    .select('id, name, slug, org_id, organizations!inner(slug)')
+    .select('id, name, slug, org_id')
     .eq('slug', restaurantSlug)
-    .eq('organizations.slug', orgSlug)
+    .eq('org_id', org.id)
     .single()
 
   if (!restaurant) notFound()
@@ -39,9 +47,16 @@ export default async function RestaurantLayout({
     if (rRole) role = rRole.role
   }
 
+  // Link de regreso según rol
+  const dashboardHref = ctx.isSuperAdmin
+    ? '/admin/dashboard'
+    : ctx.orgRoles.some(r => r.org_slug === orgSlug)
+      ? `/org/${orgSlug}/dashboard`
+      : '/dashboard'
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <AppHeader userName={ctx.full_name} restaurantName={restaurant.name} />
+      <AppHeader userName={ctx.full_name} restaurantName={restaurant.name} dashboardHref={dashboardHref} />
       <RestaurantNav orgSlug={orgSlug} restaurantSlug={restaurantSlug} role={role} />
       <main className="flex-1 p-4 md:p-6">
         {children}
