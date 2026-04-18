@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, ToggleLeft, ToggleRight, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, ToggleLeft, ToggleRight, X, ImageIcon } from 'lucide-react'
 import type { Category, MenuItem } from '@/types/database'
 
 type CategoryWithItems = Category & { menu_items: MenuItem[] }
@@ -30,6 +30,8 @@ interface ItemModalState {
   price: string
   is_active: boolean
   category_id: string
+  image_url: string | null
+  imageFile: File | null
 }
 
 export function MenuManager({ restaurantId, initialCategories }: MenuManagerProps) {
@@ -42,9 +44,12 @@ export function MenuManager({ restaurantId, initialCategories }: MenuManagerProp
     open: false, mode: 'create', name: '', description: '',
   })
   const [itemModal, setItemModal] = useState<ItemModalState>({
-    open: false, mode: 'create', name: '', description: '', price: '', is_active: true, category_id: '',
+    open: false, mode: 'create', name: '', description: '', price: '', is_active: true,
+    category_id: '', image_url: null, imageFile: null,
   })
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
 
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
   const selectedCat = categories.find(c => c.id === selectedCatId) ?? null
@@ -116,22 +121,68 @@ export function MenuManager({ restaurantId, initialCategories }: MenuManagerProp
 
   function openCreateItem() {
     if (!selectedCatId) return
-    setItemModal({ open: true, mode: 'create', name: '', description: '', price: '', is_active: true, category_id: selectedCatId })
+    setImagePreview(null)
+    setItemModal({
+      open: true, mode: 'create', name: '', description: '', price: '',
+      is_active: true, category_id: selectedCatId, image_url: null, imageFile: null,
+    })
   }
 
   function openEditItem(item: MenuItem) {
+    setImagePreview(null)
     setItemModal({
       open: true, mode: 'edit', id: item.id,
       name: item.name, description: item.description ?? '',
       price: item.price.toFixed(2), is_active: item.is_active,
       category_id: item.category_id,
+      image_url: item.image_url,
+      imageFile: null,
     })
+  }
+
+  function closeItemModal() {
+    if (imagePreview) URL.revokeObjectURL(imagePreview)
+    setImagePreview(null)
+    setItemModal(m => ({ ...m, open: false, imageFile: null }))
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('La imagen debe ser menor a 5 MB')
+      return
+    }
+    if (imagePreview) URL.revokeObjectURL(imagePreview)
+    const url = URL.createObjectURL(file)
+    setImagePreview(url)
+    setItemModal(m => ({ ...m, imageFile: file }))
+  }
+
+  function removeImage() {
+    if (imagePreview) URL.revokeObjectURL(imagePreview)
+    setImagePreview(null)
+    setItemModal(m => ({ ...m, image_url: null, imageFile: null }))
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   async function saveItem() {
     if (!itemModal.name.trim()) { toast.error('El nombre es requerido'); return }
     const price = parseFloat(itemModal.price)
     if (isNaN(price) || price < 0) { toast.error('Precio inválido'); return }
+
+    // Upload image if a new file was selected
+    let finalImageUrl: string | null = itemModal.image_url
+    if (itemModal.imageFile) {
+      const ext = itemModal.imageFile.name.split('.').pop() ?? 'jpg'
+      const path = `${restaurantId}/${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('menu-images')
+        .upload(path, itemModal.imageFile, { upsert: true })
+      if (uploadError) { toast.error('Error al subir imagen'); return }
+      const { data: urlData } = supabase.storage.from('menu-images').getPublicUrl(path)
+      finalImageUrl = urlData.publicUrl
+    }
 
     if (itemModal.mode === 'create') {
       const catItems = categories.find(c => c.id === itemModal.category_id)?.menu_items ?? []
@@ -145,6 +196,7 @@ export function MenuManager({ restaurantId, initialCategories }: MenuManagerProp
           description: itemModal.description || null,
           price,
           is_active: itemModal.is_active,
+          image_url: finalImageUrl,
           sort_order: nextOrder,
         })
         .select()
@@ -163,6 +215,7 @@ export function MenuManager({ restaurantId, initialCategories }: MenuManagerProp
           price,
           is_active: itemModal.is_active,
           category_id: itemModal.category_id,
+          image_url: finalImageUrl,
           updated_at: new Date().toISOString(),
         })
         .eq('id', itemModal.id!)
@@ -174,7 +227,6 @@ export function MenuManager({ restaurantId, initialCategories }: MenuManagerProp
         menu_items: c.menu_items.map(i => i.id === data.id ? (data as MenuItem) : i)
           .filter(i => i.category_id === c.id),
       })))
-      // If category changed, move item
       if (data.category_id !== itemModal.category_id) {
         setCategories(prev => prev.map(c => {
           if (c.id === itemModal.category_id) return { ...c, menu_items: c.menu_items.filter(i => i.id !== data.id) }
@@ -184,7 +236,7 @@ export function MenuManager({ restaurantId, initialCategories }: MenuManagerProp
       }
       toast.success('Item actualizado')
     }
-    setItemModal(m => ({ ...m, open: false }))
+    closeItemModal()
   }
 
   async function deleteItem(item: MenuItem) {
@@ -211,6 +263,8 @@ export function MenuManager({ restaurantId, initialCategories }: MenuManagerProp
       menu_items: c.menu_items.map(i => i.id === item.id ? (data as MenuItem) : i),
     })))
   }
+
+  const currentPreview = imagePreview ?? itemModal.image_url
 
   return (
     <div className="flex h-[calc(100vh-120px)]">
@@ -317,6 +371,7 @@ export function MenuManager({ restaurantId, initialCategories }: MenuManagerProp
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
+                  <th className="py-2 px-3 w-14"></th>
                   <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Nombre</th>
                   <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Descripción</th>
                   <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Precio</th>
@@ -327,6 +382,19 @@ export function MenuManager({ restaurantId, initialCategories }: MenuManagerProp
               <tbody>
                 {selectedCat.menu_items.map(item => (
                   <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="py-2 px-3">
+                      {item.image_url ? (
+                        <img
+                          src={item.image_url}
+                          alt={item.name}
+                          className="w-10 h-10 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                          <ImageIcon size={14} className="text-gray-300" />
+                        </div>
+                      )}
+                    </td>
                     <td className="py-2.5 px-3 font-medium text-gray-900">{item.name}</td>
                     <td className="py-2.5 px-3 text-gray-500 hidden md:table-cell max-w-xs truncate">
                       {item.description ?? '—'}
@@ -422,16 +490,16 @@ export function MenuManager({ restaurantId, initialCategories }: MenuManagerProp
       {/* Item Modal */}
       {itemModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
               <h3 className="font-semibold text-gray-900">
                 {itemModal.mode === 'create' ? 'Nuevo Item' : 'Editar Item'}
               </h3>
-              <button onClick={() => setItemModal(m => ({ ...m, open: false }))} className="text-gray-400 hover:text-gray-600">
+              <button onClick={closeItemModal} className="text-gray-400 hover:text-gray-600">
                 <X size={18} />
               </button>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
                 <input
@@ -480,6 +548,51 @@ export function MenuManager({ restaurantId, initialCategories }: MenuManagerProp
                   ))}
                 </select>
               </div>
+
+              {/* Image upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Imagen</label>
+                <div className="flex items-center gap-3">
+                  <div className="w-20 h-20 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {currentPreview ? (
+                      <img
+                        src={currentPreview}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <ImageIcon size={24} className="text-gray-300" />
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-xs px-3 py-1.5 border border-gray-300 rounded-lg hover:border-orange-400 hover:text-orange-600 transition-colors"
+                    >
+                      {currentPreview ? 'Cambiar imagen' : 'Seleccionar imagen'}
+                    </button>
+                    {currentPreview && (
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="text-xs px-3 py-1.5 text-red-500 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                      >
+                        Quitar imagen
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                </div>
+                <p className="mt-1.5 text-xs text-gray-400">JPG, PNG o WebP · máx. 5 MB</p>
+              </div>
+
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -496,9 +609,9 @@ export function MenuManager({ restaurantId, initialCategories }: MenuManagerProp
                 </span>
               </div>
             </div>
-            <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-100">
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-100 flex-shrink-0">
               <button
-                onClick={() => setItemModal(m => ({ ...m, open: false }))}
+                onClick={closeItemModal}
                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg transition-colors"
               >
                 Cancelar
